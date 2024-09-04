@@ -30,7 +30,7 @@
 <body class="hold-transition login-page">
 <div class="login-box">
     <div class="login-logo">
-        <a href="#"><img src="{{ asset('assets/images/logo.png') }}" alt="Logo"></a>
+        <a href="#"><img style="width:100%;" src="{{ asset('assets/images/logo.png') }}" alt="Logo"></a>
     </div>
     <!-- /.login-logo -->
     <div class="login-box-body">
