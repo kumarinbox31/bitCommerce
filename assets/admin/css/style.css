@@ -4977,3 +4977,6 @@ table.text-center th {
     white-space: normal !important;
   }
 }
+.login-logo > a > img{
+  width:100% !important;
+}
