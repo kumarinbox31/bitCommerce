@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Input;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Validator;
 use Intervention\Image\Facades\Image;
+use Illuminate\Support\Facades\Log;
 
 class WebSettingController extends Controller
 {
@@ -29,73 +30,108 @@ class WebSettingController extends Controller
         $data['page_title'] = "Manage Logo & Favicon";
         return view('webControl.logo', $data);
     }
+    
     public function updateLogo(Request $request)
     {
-        $this->validate($request,[
-           'logo' => 'mimes:png',
+        // Log the start of the update process
+        Log::info('Starting updateLogo process.');
+
+        $this->validate($request, [
+            'logo' => 'mimes:png',
             'favicon' => 'mimes:png',
             'loader' => 'mimes:gif',
             'footer-logo' => 'mimes:png'
         ]);
-        if($request->hasFile('logo')){
-            $image = $request->file('logo');
-            $filename = 'logo'.'.'.$image->getClientOriginalExtension();
-            $location = 'assets/images/' . $filename;
-            Image::make($image)->save($location);
+
+        try {
+            if ($request->hasFile('logo')) {
+                $image = $request->file('logo');
+                $filename = 'logo' . '.' . $image->getClientOriginalExtension();
+                $location = 'assets/images/' . $filename;
+                Image::make($image)->save($location);
+
+                // Log the successful update of the logo
+                Log::info('Logo updated successfully.', ['filename' => $filename]);
+            }
+
+            if ($request->hasFile('favicon')) {
+                $image = $request->file('favicon');
+                $filename = 'favicon' . '.' . $image->getClientOriginalExtension();
+                $location = 'assets/images/' . $filename;
+                Image::make($image)->resize(50, 50)->save($location);
+
+                // Log the successful update of the favicon
+                Log::info('Favicon updated successfully.', ['filename' => $filename]);
+            }
+
+            if ($request->hasFile('loader')) {
+                $image = $request->file('loader');
+                $filename = 'loader' . '.' . $image->getClientOriginalExtension();
+                $location = 'assets/images/';
+                $image->move($location, $filename);
+
+                // Log the successful update of the loader
+                Log::info('Loader updated successfully.', ['filename' => $filename]);
+            }
+
+            if ($request->hasFile('footer-logo')) {
+                $image = $request->file('footer-logo');
+                $filename = 'footer-logo' . '.' . $image->getClientOriginalExtension();
+                $location = 'assets/images/' . $filename;
+                Image::make($image)->save($location);
+
+                // Log the successful update of the footer logo
+                Log::info('Footer logo updated successfully.', ['filename' => $filename]);
+            }
+
+            session()->flash('message', 'Logo and Favicon Updated Successfully.');
+            session()->flash('title', 'Success');
+            session()->flash('type', 'success');
+
+            // Log the completion of the update process
+            Log::info('updateLogo process completed successfully.');
+        } catch (\Exception $e) {
+            // Log the exception if something goes wrong
+            Log::error('Error occurred during updateLogo process.', ['error' => $e->getMessage()]);
+
+            session()->flash('message', 'An error occurred while updating.');
+            session()->flash('title', 'Error');
+            session()->flash('type', 'danger');
         }
-        if($request->hasFile('favicon')){
-            $image = $request->file('favicon');
-            $filename = 'favicon'.'.'.$image->getClientOriginalExtension();
-            $location = 'assets/images/' . $filename;
-            Image::make($image)->resize(50,50)->save($location);
-        }
-        if($request->hasFile('loader')){
-            $image = $request->file('loader');
-            $filename = 'loader'.'.'.$image->getClientOriginalExtension();
-            $location = 'assets/images/';
-            $image->move($location,$filename);
-        }
-        if($request->hasFile('footer-logo')){
-            $image = $request->file('footer-logo');
-            $filename = 'footer-logo'.'.'.$image->getClientOriginalExtension();
-            $location = 'assets/images/' . $filename;
-            Image::make($image)->save($location);
-        }
-        session()->flash('message','Logo and Favicon Updated Successfully.');
-        session()->flash('title','Success');
-        session()->flash('type','success');
+
         return redirect()->back();
     }
+
     public function manageFooter()
     {
         $data['page_title'] = "Manage Web Footer";
         return view('webControl.footer', $data);
     }
-    public function updateFooter(Request $request,$id)
+    public function updateFooter(Request $request, $id)
     {
         $basic = BasicSetting::findOrFail($id);
-        $this->validate($request,[
+        $this->validate($request, [
             'footer_text' => 'required',
             'copy_text' => 'required',
             'footer_image' => 'mimes:png,jpg,jpeg'
         ]);
-        $in = Input::except('_method','_token');
-        if($request->hasFile('footer_image')){
+        $in = Input::except('_method', '_token');
+        if ($request->hasFile('footer_image')) {
             $image = $request->file('footer_image');
-            $filename = time().'.'.$image->getClientOriginalExtension();
+            $filename = time() . '.' . $image->getClientOriginalExtension();
             $location = 'assets/images/' . $filename;
-            Image::make($image)->resize(1600,475)->save($location);
+            Image::make($image)->resize(1600, 475)->save($location);
             $path = './assets/images/';
-            $link = $path.$basic->footer_image;
-            if (file_exists($link)){
+            $link = $path . $basic->footer_image;
+            if (file_exists($link)) {
                 unlink($link);
             }
             $in['footer_image'] = $filename;
         }
         $basic->fill($in)->save();
-        session()->flash('message','Web Footer Updated Successfully.');
-        session()->flash('title','Success');
-        session()->flash('type','success');
+        session()->flash('message', 'Web Footer Updated Successfully.');
+        session()->flash('title', 'Success');
+        session()->flash('type', 'success');
         return redirect()->back();
     }
 
@@ -107,38 +143,38 @@ class WebSettingController extends Controller
     }
     public function storeSlider(Request $request)
     {
-        $this->validate($request,[
+        $this->validate($request, [
             'image' => 'required|mimes:png,jpeg,jpg,gif'
         ]);
-        $in = Input::except('_method','_token');
-        if($request->hasFile('image')){
+        $in = Input::except('_method', '_token');
+        if ($request->hasFile('image')) {
             $image = $request->file('image');
-            $filename = 'slider_'.time().'.'.$image->getClientOriginalExtension();
+            $filename = 'slider_' . time() . '.' . $image->getClientOriginalExtension();
             $location = 'assets/images/slider/' . $filename;
-            Image::make($image)->resize(1920,620)->save($location);
+            Image::make($image)->resize(1920, 620)->save($location);
             $in['image'] = $filename;
         }
         Slider::create($in);
-        session()->flash('message','Slider Created Successfully.');
-        session()->flash('title','Success');
-        session()->flash('type','success');
+        session()->flash('message', 'Slider Created Successfully.');
+        session()->flash('title', 'Success');
+        session()->flash('type', 'success');
         return redirect()->back();
     }
     public function deleteSlider(Request $request)
     {
-        $this->validate($request,[
-           'id' => 'required'
+        $this->validate($request, [
+            'id' => 'required'
         ]);
         $slider = Slider::findOrFail($request->id);
         $path = './assets/images/slider/';
-        $link = $path.$slider->image;
+        $link = $path . $slider->image;
         $slider->delete();
         if (file_exists($link)) {
             unlink($link);
         }
-        session()->flash('message','Slider Deleted Successfully.');
-        session()->flash('title','Success');
-        session()->flash('type','success');
+        session()->flash('message', 'Slider Deleted Successfully.');
+        session()->flash('title', 'Success');
+        session()->flash('type', 'success');
         return redirect()->back();
     }
 
@@ -166,7 +202,7 @@ class WebSettingController extends Controller
         $product = Social::find($product_id);
         return response()->json($product);
     }
-    public function updateSocial(Request $request,$product_id)
+    public function updateSocial(Request $request, $product_id)
     {
         $product = Social::find($product_id);
         $product->name = $request->name;
@@ -185,16 +221,16 @@ class WebSettingController extends Controller
     {
         $data['page_title'] = "Control Menu";
         $data['menu'] = Menu::all();
-        return view('webControl.menu-show',$data);
+        return view('webControl.menu-show', $data);
     }
     public function createMenu()
     {
         $data['page_title'] = "Create Menu";
-        return view('webControl.menu-create',$data);
+        return view('webControl.menu-create', $data);
     }
     public function storeMenu(Request $request)
     {
-        $this->validate($request,[
+        $this->validate($request, [
             'name' => 'required|unique:menus,name',
             'description' => 'required'
         ]);
@@ -208,13 +244,13 @@ class WebSettingController extends Controller
     {
         $data['page_title'] = "EdIt MEnu";
         $data['menu'] = Menu::findOrFail($id);
-        return view('webControl.menu-edit',$data);
+        return view('webControl.menu-edit', $data);
     }
-    public function updateMenu(Request $request,$id)
+    public function updateMenu(Request $request, $id)
     {
         $menu = Menu::findOrFail($id);
-        $this->validate($request,[
-            'name' => 'required|unique:menus,name,'.$menu->id,
+        $this->validate($request, [
+            'name' => 'required|unique:menus,name,' . $menu->id,
             'description' => 'required'
         ]);
         $menu->fill($request->all())->save();
@@ -225,7 +261,7 @@ class WebSettingController extends Controller
     }
     public function deleteMenu(Request $request)
     {
-        $this->validate($request,[
+        $this->validate($request, [
             'id' => 'required'
         ]);
         Menu::destroy($request->id);
@@ -237,22 +273,22 @@ class WebSettingController extends Controller
     public function mangeBreadcrumb()
     {
         $data['page_title'] = "Manage Breadcrumb";
-        return view('webControl.breadcrumb',$data);
+        return view('webControl.breadcrumb', $data);
     }
     public function updateBreadcrumb(Request $request)
     {
         $basic = BasicSetting::first();
-        $this->validate($request,[
-           'breadcrumb' => 'mimes:png,jpg,jpeg'
+        $this->validate($request, [
+            'breadcrumb' => 'mimes:png,jpg,jpeg'
         ]);
-        $in = Input::except('_method','_token');
-        if($request->hasFile('breadcrumb')){
+        $in = Input::except('_method', '_token');
+        if ($request->hasFile('breadcrumb')) {
             $image = $request->file('breadcrumb');
-            $filename = 'breadcrumb_'.time().'.'.$image->getClientOriginalExtension();
+            $filename = 'breadcrumb_' . time() . '.' . $image->getClientOriginalExtension();
             $location = 'assets/images/' . $filename;
-            Image::make($image)->resize(1920,650)->save($location);
+            Image::make($image)->resize(1920, 650)->save($location);
             $path = './assets/images/';
-            $link = $path.$basic->breadcrumb;
+            $link = $path . $basic->breadcrumb;
             if (file_exists($link)) {
                 unlink($link);
             }
@@ -267,35 +303,35 @@ class WebSettingController extends Controller
     public function mangeParallax()
     {
         $data['page_title'] = "Manage Parallax Image";
-        return view('webControl.parallax',$data);
+        return view('webControl.parallax', $data);
     }
     public function updateParallax(Request $request)
     {
         $basic = BasicSetting::first();
-        $this->validate($request,[
+        $this->validate($request, [
             'counter_bg' => 'mimes:png,jpg,jpeg',
             'subscribe_bg' => 'mimes:png,jpg,jpeg',
         ]);
-        $in = Input::except('_method','_token');
-        if($request->hasFile('subscribe_bg')){
+        $in = Input::except('_method', '_token');
+        if ($request->hasFile('subscribe_bg')) {
             $image = $request->file('subscribe_bg');
-            $filename = 'subscribe_'.time().'.'.$image->getClientOriginalExtension();
+            $filename = 'subscribe_' . time() . '.' . $image->getClientOriginalExtension();
             $location = 'assets/images/' . $filename;
-            Image::make($image)->resize(1070,780)->save($location);
+            Image::make($image)->resize(1070, 780)->save($location);
             $path = './assets/images/';
-            $link = $path.$basic->subscribe_bg;
+            $link = $path . $basic->subscribe_bg;
             if (file_exists($link)) {
                 unlink($link);
             }
             $in['subscribe_bg'] = $filename;
         }
-        if($request->hasFile('counter_bg')){
+        if ($request->hasFile('counter_bg')) {
             $image = $request->file('counter_bg');
-            $filename = 'counter_'.time().'.'.$image->getClientOriginalExtension();
+            $filename = 'counter_' . time() . '.' . $image->getClientOriginalExtension();
             $location = 'assets/images/' . $filename;
-            Image::make($image)->resize(1920,1064)->save($location);
+            Image::make($image)->resize(1920, 1064)->save($location);
             $path = './assets/images/';
-            $link = $path.$basic->counter_bg;
+            $link = $path . $basic->counter_bg;
             if (file_exists($link)) {
                 unlink($link);
             }
@@ -310,12 +346,12 @@ class WebSettingController extends Controller
     public function manageAbout()
     {
         $data['page_title'] = "Manage About";
-        return view('webControl.about',$data);
+        return view('webControl.about', $data);
     }
     public function updateAbout(Request $request)
     {
-        $this->validate($request,[
-           'about' => 'required'
+        $this->validate($request, [
+            'about' => 'required'
         ]);
         $basic = BasicSetting::first();
         $basic->about = $request->about;
@@ -329,11 +365,11 @@ class WebSettingController extends Controller
     public function managePrivacyPolicy()
     {
         $data['page_title'] = "Manage Privacy Policy";
-        return view('webControl.privacy-policy',$data);
+        return view('webControl.privacy-policy', $data);
     }
     public function updatePrivacyPolicy(Request $request)
     {
-        $this->validate($request,[
+        $this->validate($request, [
             'about' => 'required'
         ]);
         $basic = BasicSetting::first();
@@ -348,11 +384,11 @@ class WebSettingController extends Controller
     public function manageTermsCondition()
     {
         $data['page_title'] = "Terms Condition About";
-        return view('webControl.terms-condition',$data);
+        return view('webControl.terms-condition', $data);
     }
     public function updateTermsCondition(Request $request)
     {
-        $this->validate($request,[
+        $this->validate($request, [
             'about' => 'required'
         ]);
         $basic = BasicSetting::first();
@@ -367,16 +403,16 @@ class WebSettingController extends Controller
     public function createFaqs()
     {
         $data['page_title'] = "Create New Question";
-        return view('webControl.faqs-create',$data);
+        return view('webControl.faqs-create', $data);
     }
 
     public function storeFaqs(Request $request)
     {
         $request->validate([
-           'title' => 'required',
+            'title' => 'required',
             'description' => 'required'
         ]);
-        $in = Input::except('_method','_token');
+        $in = Input::except('_method', '_token');
         Faqs::create($in);
         session()->flash('message', 'FAQS Created Successfully.');
         Session::flash('type', 'success');
@@ -387,25 +423,25 @@ class WebSettingController extends Controller
     public function allFaqs()
     {
         $data['page_title'] = "All Question";
-        $data['faqs'] = Faqs::orderBy('id','desc')->paginate(10);
-        return view('webControl.faqs-all',$data);
+        $data['faqs'] = Faqs::orderBy('id', 'desc')->paginate(10);
+        return view('webControl.faqs-all', $data);
     }
 
     public function editFaqs($id)
     {
         $data['page_title'] = "Edit Faqs";
         $data['faqs'] = Faqs::findOrFail($id);
-        return view('webControl.faqs-edit',$data);
+        return view('webControl.faqs-edit', $data);
     }
 
     public function updateFaqs(Request $request, $id)
     {
         $faqs = Faqs::findOrFail($id);
         $request->validate([
-           'title' => 'required',
+            'title' => 'required',
             'description' => 'required'
         ]);
-        $in = Input::except('_method','_token');
+        $in = Input::except('_method', '_token');
         $faqs->fill($in)->save();
         session()->flash('message', 'FAQS Updated Successfully.');
         Session::flash('type', 'success');
@@ -416,7 +452,7 @@ class WebSettingController extends Controller
     public function deleteFaqs(Request $request)
     {
         $request->validate([
-           'id' => 'required'
+            'id' => 'required'
         ]);
         Faqs::destroy($request->id);
         session()->flash('message', 'FAQS Deleted Successfully.');
@@ -428,21 +464,21 @@ class WebSettingController extends Controller
     public function createTestimonial()
     {
         $data['page_title'] = "Create New Testimonial";
-        return view('webControl.testimonial-create',$data);
+        return view('webControl.testimonial-create', $data);
     }
     public function submitTestimonial(Request $request)
     {
         $request->validate([
-           'name' => 'required',
+            'name' => 'required',
             'image' => 'required|mimes:png,jpeg,jpg',
             'message' => 'required'
         ]);
-        $in = Input::except('_method','_token');
-        if($request->hasFile('image')){
+        $in = Input::except('_method', '_token');
+        if ($request->hasFile('image')) {
             $image = $request->file('image');
-            $filename = 'testimonial_'.time().'.'.$image->getClientOriginalExtension();
+            $filename = 'testimonial_' . time() . '.' . $image->getClientOriginalExtension();
             $location = 'assets/images/testimonial/' . $filename;
-            Image::make($image)->resize(180,180)->save($location);
+            Image::make($image)->resize(180, 180)->save($location);
             $in['image'] = $filename;
         }
         Testimonial::create($in);
@@ -454,17 +490,17 @@ class WebSettingController extends Controller
     public function allTestimonial()
     {
         $data['page_title'] = "All Testimonial";
-        $data['testimonial'] = Testimonial::orderBy('id','desc')->paginate(10);
-        return view('webControl.testimonial-all',$data);
+        $data['testimonial'] = Testimonial::orderBy('id', 'desc')->paginate(10);
+        return view('webControl.testimonial-all', $data);
     }
     public function editTestimonial($id)
     {
         $data['page_title'] = "Edit Testimonial";
         $data['testimonial'] = Testimonial::findOrFail($id);
-        return view('webControl.testimonial-edit',$data);
+        return view('webControl.testimonial-edit', $data);
     }
 
-    public function updateTestimonial(Request $request,$id)
+    public function updateTestimonial(Request $request, $id)
     {
         $testimonial = Testimonial::findOrFail($id);
         $request->validate([
@@ -472,14 +508,14 @@ class WebSettingController extends Controller
             'image' => 'mimes:png,jpeg,jpg',
             'message' => 'required'
         ]);
-        $in = Input::except('_method','_token');
-        if($request->hasFile('image')){
+        $in = Input::except('_method', '_token');
+        if ($request->hasFile('image')) {
             $image = $request->file('image');
-            $filename = 'testimonial_'.time().'.'.$image->getClientOriginalExtension();
+            $filename = 'testimonial_' . time() . '.' . $image->getClientOriginalExtension();
             $location = 'assets/images/testimonial/' . $filename;
-            Image::make($image)->resize(180,180)->save($location);
+            Image::make($image)->resize(180, 180)->save($location);
             $path = './assets/images/';
-            $link = $path.$testimonial->image;
+            $link = $path . $testimonial->image;
             if (file_exists($link)) {
                 unlink($link);
             }
@@ -498,7 +534,7 @@ class WebSettingController extends Controller
         ]);
         $testimonial = Testimonial::findOrFail($request->id);
         $path = './assets/images/';
-        $link = $path.$testimonial->image;
+        $link = $path . $testimonial->image;
         if (file_exists($link)) {
             unlink($link);
         }
@@ -512,7 +548,7 @@ class WebSettingController extends Controller
     public function createPartner()
     {
         $data['page_title'] = "Create New Partner";
-        return view('webControl.partner-create',$data);
+        return view('webControl.partner-create', $data);
     }
     public function submitPartner(Request $request)
     {
@@ -520,12 +556,12 @@ class WebSettingController extends Controller
             'name' => 'required',
             'image' => 'required|mimes:png,jpeg,jpg',
         ]);
-        $in = Input::except('_method','_token');
-        if($request->hasFile('image')){
+        $in = Input::except('_method', '_token');
+        if ($request->hasFile('image')) {
             $image = $request->file('image');
-            $filename = 'partner_'.time().'.'.$image->getClientOriginalExtension();
+            $filename = 'partner_' . time() . '.' . $image->getClientOriginalExtension();
             $location = 'assets/images/partner/' . $filename;
-            Image::make($image)->resize(170,90)->save($location);
+            Image::make($image)->resize(170, 90)->save($location);
             $in['image'] = $filename;
         }
         Partner::create($in);
@@ -537,31 +573,31 @@ class WebSettingController extends Controller
     public function allPartner()
     {
         $data['page_title'] = "All Partner";
-        $data['testimonial'] = Partner::orderBy('id','desc')->paginate(10);
-        return view('webControl.partner-all',$data);
+        $data['testimonial'] = Partner::orderBy('id', 'desc')->paginate(10);
+        return view('webControl.partner-all', $data);
     }
     public function editPartner($id)
     {
         $data['page_title'] = "Edit Partner";
         $data['testimonial'] = Partner::findOrFail($id);
-        return view('webControl.partner-edit',$data);
+        return view('webControl.partner-edit', $data);
     }
 
-    public function updatePartner(Request $request,$id)
+    public function updatePartner(Request $request, $id)
     {
         $testimonial = Partner::findOrFail($id);
         $request->validate([
             'name' => 'required',
             'image' => 'mimes:png,jpeg,jpg',
         ]);
-        $in = Input::except('_method','_token');
-        if($request->hasFile('image')){
+        $in = Input::except('_method', '_token');
+        if ($request->hasFile('image')) {
             $image = $request->file('image');
-            $filename = 'partner_'.time().'.'.$image->getClientOriginalExtension();
+            $filename = 'partner_' . time() . '.' . $image->getClientOriginalExtension();
             $location = 'assets/images/partner/' . $filename;
-            Image::make($image)->resize(170,90)->save($location);
+            Image::make($image)->resize(170, 90)->save($location);
             $path = './assets/images/partner/';
-            $link = $path.$testimonial->image;
+            $link = $path . $testimonial->image;
             if (file_exists($link)) {
                 unlink($link);
             }
@@ -580,7 +616,7 @@ class WebSettingController extends Controller
         ]);
         $testimonial = Partner::findOrFail($request->id);
         $path = './assets/images/partner/';
-        $link = $path.$testimonial->image;
+        $link = $path . $testimonial->image;
         if (file_exists($link)) {
             unlink($link);
         }
@@ -599,11 +635,11 @@ class WebSettingController extends Controller
     public function updateAboutText(Request $request)
     {
         $page = BasicSetting::first();
-        $in = Input::except('_method','_token');
+        $in = Input::except('_method', '_token');
         $page->fill($in)->save();
-        session()->flash('message','About Text Update Successfully.');
-        session()->flash('title','Success');
-        session()->flash('type','success');
+        session()->flash('message', 'About Text Update Successfully.');
+        session()->flash('title', 'Success');
+        session()->flash('type', 'success');
         return redirect()->back();
     }
 
@@ -611,7 +647,7 @@ class WebSettingController extends Controller
     {
         $data['page_title'] = 'Manage Speciality';
         $data['speciality'] = Speciality::all();
-        return view('webControl.speciality',$data);
+        return view('webControl.speciality', $data);
     }
 
     public function editSpeciality($product_id)
@@ -624,50 +660,50 @@ class WebSettingController extends Controller
     {
         $speciality = Speciality::findOrFail($request->product_id);
         $request->validate([
-           'title' => 'required',
-           'subtitle' => 'required',
-           'image' => 'mimes:png,jpg,jpeg'
+            'title' => 'required',
+            'subtitle' => 'required',
+            'image' => 'mimes:png,jpg,jpeg'
         ]);
-        $in = Input::except('_method','_token','product_id');
-        if($request->hasFile('image')){
+        $in = Input::except('_method', '_token', 'product_id');
+        if ($request->hasFile('image')) {
             $image = $request->file('image');
-            $filename = 'speciality_'.time().'.'.$image->getClientOriginalExtension();
+            $filename = 'speciality_' . time() . '.' . $image->getClientOriginalExtension();
             $location = 'assets/images/speciality/' . $filename;
-            Image::make($image)->resize(60,60)->save($location);
+            Image::make($image)->resize(60, 60)->save($location);
             $path = './assets/images/speciality/';
-            $link = $path.$speciality->image;
+            $link = $path . $speciality->image;
             if (file_exists($link)) {
                 unlink($link);
             }
             $in['image'] = $filename;
         }
         $speciality->fill($in)->save();
-        session()->flash('message','Speciality Update Successfully.');
-        session()->flash('type','success');
+        session()->flash('message', 'Speciality Update Successfully.');
+        session()->flash('type', 'success');
         return redirect()->back();
     }
 
     public function updateSpecialityBg(Request $request)
     {
         $request->validate([
-           'image' => 'required|mimes:png,jpg,jpeg'
+            'image' => 'required|mimes:png,jpg,jpeg'
         ]);
         $basic = BasicSetting::first();
-        if($request->hasFile('image')){
+        if ($request->hasFile('image')) {
             $image = $request->file('image');
-            $filename = 'speciality_'.time().'.'.$image->getClientOriginalExtension();
+            $filename = 'speciality_' . time() . '.' . $image->getClientOriginalExtension();
             $location = 'assets/images/speciality/' . $filename;
-            Image::make($image)->resize(1172,110)->save($location);
+            Image::make($image)->resize(1172, 110)->save($location);
             $path = './assets/images/speciality/';
-            $link = $path.$basic->speciality_bg;
+            $link = $path . $basic->speciality_bg;
             if (file_exists($link)) {
                 unlink($link);
             }
             $basic->speciality_bg = $filename;
             $basic->save();
         }
-        session()->flash('message','Speciality Bg Update Successfully.');
-        session()->flash('type','success');
+        session()->flash('message', 'Speciality Bg Update Successfully.');
+        session()->flash('type', 'success');
         return redirect()->back();
 
     }
