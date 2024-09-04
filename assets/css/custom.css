@@ -4018,3 +4018,8 @@ ul.tagcloud li a {
 .footer_nav ul li a:hover {
 	color:#38ccff;
 }
+@media(min-width:640px){
+.navbar-brand > img{
+	max-height: 10rem;
+}
+}
